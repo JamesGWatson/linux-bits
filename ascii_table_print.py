@@ -17,7 +17,7 @@ from io import StringIO
 #########################
 
 @dataclasses.dataclass
-class CodeType:
+class _CodeType:
     """Enumerable for formatting output based on type."""
 
     CONTROL   = 0x00
@@ -26,7 +26,7 @@ class CodeType:
     CHARACTER = 0x03
 
 @dataclasses.dataclass
-class TypeStyle:
+class _TypeStyle:
     """Enumerable for formatting codes."""
 
     PLAIN  = "\033[0m"
@@ -34,16 +34,18 @@ class TypeStyle:
     BOLD   = "\033[1m"
     RED    = "\033[31;1m"
     INV    = "\033[7m"
-    PURP   = "\033[35m"
+    PURPLE = "\033[35m"
     BLUE   = "\033[34m"
-    YELW   = "\033[93;1m"
+    YELLOW = "\033[93;1m"
 
 @dataclasses.dataclass
-class Spacing:
-    """Enumerable for formatting codes."""
+class _Spacing:
+    """Spacing semi-constants."""
 
-    PARTS   = "  "
-    COLUMNS = "    "
+    CHARACTER = " "
+
+    PARTS   = CHARACTER * 2
+    COLUMNS = CHARACTER * 4
 
 
 #########################
@@ -52,7 +54,7 @@ class Spacing:
 
 class _CodeRangeMapping():
 
-    def __init__(self, start : int, end : int, codetype : CodeType):
+    def __init__(self, start : int, end : int, codetype : _CodeType):
         self.Start = start
         self.End   = end
         self.Type  = codetype
@@ -74,9 +76,9 @@ def _FormatControlString(controlcode : int,
     Formats an integer to a string displaying the numerical value, the short
     code, and the name of the cotrol function.
     """
-    string_hex = f"{controlcode:02X}{TypeStyle.PURP}h{TypeStyle.PLAIN}"
-    string_dec = f"{controlcode:03}{TypeStyle.BLUE}d{TypeStyle.PLAIN}"
-    string_ctrl = f"{TypeStyle.BOLD}{shortstring:<3}{TypeStyle.PLAIN}"
+    string_hex = f"{controlcode:02X}{_TypeStyle.PURPLE}h{_TypeStyle.PLAIN}"
+    string_dec = f"{controlcode:03}{_TypeStyle.BLUE}d{_TypeStyle.PLAIN}"
+    string_ctrl = f"{_TypeStyle.BOLD}{shortstring:<3}{_TypeStyle.PLAIN}"
     string_desc = f"{description:<20}\t"
 
     string_list = [
@@ -89,11 +91,11 @@ def _FormatControlString(controlcode : int,
     if hexonly:
         string_list.remove(string_dec)
 
-    return Spacing.PARTS.join(string_list)
+    return _Spacing.PARTS.join(string_list)
 
 
 def _FormatOutputString(asciivalue : int,
-                       codetype : CodeType,
+                       codetype : _CodeType,
                        hexonly : bool = False
                        ) -> str:
     """Take an integer and output a formatted string.
@@ -101,14 +103,14 @@ def _FormatOutputString(asciivalue : int,
     Formats an integer to a string displaying the numerical value and as a
     printable character using console colour highlighting.
     """
-    string_hex = f"{asciivalue:02X}{TypeStyle.PURP}h{TypeStyle.PLAIN}"
-    string_dec = f"{asciivalue:03}{TypeStyle.BLUE}d{TypeStyle.PLAIN}"
+    string_hex = f"{asciivalue:02X}{_TypeStyle.PURPLE}h{_TypeStyle.PLAIN}"
+    string_dec = f"{asciivalue:03}{_TypeStyle.BLUE}d{_TypeStyle.PLAIN}"
 
     style_list = [
         f"{chr(asciivalue)}", # control
         f"{chr(asciivalue)}", # symbol
-        f"{TypeStyle.RED}{chr(asciivalue)}{TypeStyle.PLAIN}", # number
-        f"{TypeStyle.YELW}{chr(asciivalue)}{TypeStyle.PLAIN}", # character
+        f"{_TypeStyle.RED}{chr(asciivalue)}{_TypeStyle.PLAIN}", # number
+        f"{_TypeStyle.YELLOW}{chr(asciivalue)}{_TypeStyle.PLAIN}", # character
         ]
     string_chr = style_list[codetype]
 
@@ -121,7 +123,7 @@ def _FormatOutputString(asciivalue : int,
     if hexonly:
         string_list.remove(string_dec)
 
-    return Spacing.PARTS.join(string_list)
+    return _Spacing.PARTS.join(string_list)
 
 
 #########################
@@ -164,14 +166,14 @@ def _GetControls(hexonly : bool = False) -> str:
         "US"  : "Unit Separator",
         }
 
-    arr = [_FormatControlString(i, key, codes[key], hexonly=hexonly)
+    codes_array = [_FormatControlString(i, key, codes[key], hexonly=hexonly)
                                                for i,key in enumerate(codes)]
 
     rows = 16
     cols = 2
     stringified = StringIO()
     for row in range(rows):
-        stringified.write(" " + Spacing.COLUMNS.join(arr[row:row+(rows*cols):rows]).rstrip())
+        stringified.write(" " + _Spacing.COLUMNS.join(codes_array[row:row+(rows*cols):rows]).rstrip())
         stringified.write("\n")
 
     stringified = stringified.getvalue()
@@ -179,7 +181,7 @@ def _GetControls(hexonly : bool = False) -> str:
     # invert "printable" codes
     highlights = ["BS", "CR", "LF", "HT"]
     for light in highlights:
-        stringified = stringified.replace(f"{light}", f"{TypeStyle.INV}{light}{TypeStyle.PLAIN}")
+        stringified = stringified.replace(f"{light}", f"{_TypeStyle.INV}{light}{_TypeStyle.PLAIN}")
 
     return stringified
 
@@ -187,13 +189,13 @@ def _GetControls(hexonly : bool = False) -> str:
 def _GetPrintables(hexonly : bool = False) -> str:
     """Output: printable characters formatted with hexadecimal and decimal values."""
     style_ranges = [
-            _CodeRangeMapping(0x20, 0x30, CodeType.SYMBOL),
-            _CodeRangeMapping(0x30, 0x3A, CodeType.NUMBER),
-            _CodeRangeMapping(0x3A, 0x41, CodeType.SYMBOL),
-            _CodeRangeMapping(0x41, 0x5B, CodeType.CHARACTER),
-            _CodeRangeMapping(0x5B, 0x61, CodeType.SYMBOL),
-            _CodeRangeMapping(0x61, 0x7B, CodeType.CHARACTER),
-            _CodeRangeMapping(0x7B, 0x7F, CodeType.SYMBOL),
+            _CodeRangeMapping(0x20, 0x30, _CodeType.SYMBOL),
+            _CodeRangeMapping(0x30, 0x3A, _CodeType.NUMBER),
+            _CodeRangeMapping(0x3A, 0x41, _CodeType.SYMBOL),
+            _CodeRangeMapping(0x41, 0x5B, _CodeType.CHARACTER),
+            _CodeRangeMapping(0x5B, 0x61, _CodeType.SYMBOL),
+            _CodeRangeMapping(0x61, 0x7B, _CodeType.CHARACTER),
+            _CodeRangeMapping(0x7B, 0x7F, _CodeType.SYMBOL),
         ]
 
     combined =sum([[_FormatOutputString(i, s.Type, hexonly=hexonly)
@@ -203,7 +205,7 @@ def _GetPrintables(hexonly : bool = False) -> str:
     cols = 6
     stringified = ""
     for row in range(rows):
-        stringified += " " + Spacing.COLUMNS.join(combined[row:row+(rows*cols):rows])
+        stringified += " " + _Spacing.COLUMNS.join(combined[row:row+(rows*cols):rows])
         stringified += "\n"
 
     return stringified
@@ -217,10 +219,10 @@ def GetTable(args : dict = None) -> None:
     """Print the ASCII character and code map."""
     pseudo_string_builder = StringIO()
     if args["full"] or args["controlonly"]:
-        pseudo_string_builder.write(f"\n{TypeStyle.BOLD_U}Control Codes{TypeStyle.PLAIN}\n")
+        pseudo_string_builder.write(f"\n{_TypeStyle.BOLD_U}Control Codes{_TypeStyle.PLAIN}\n")
         pseudo_string_builder.write(_GetControls(args["hexonly"]))
     if not args["controlonly"]:
-        pseudo_string_builder.write(f"\n{TypeStyle.BOLD_U}Printable Characters{TypeStyle.PLAIN}\n")
+        pseudo_string_builder.write(f"\n{_TypeStyle.BOLD_U}Printable Characters{_TypeStyle.PLAIN}\n")
         pseudo_string_builder.write(_GetPrintables(args["hexonly"]))
 
     return pseudo_string_builder.getvalue()
@@ -249,7 +251,7 @@ def ParseAndExecute() -> str:
 
     parser.add_argument("-s",
                         "--slim",
-                        help="Use slim spacing for printable character table",
+                        help="Use slim spacing for printable character table.",
                         action="store_true")
 
     parser.add_argument("-x",
@@ -260,12 +262,9 @@ def ParseAndExecute() -> str:
 
     command_line_args = vars(parser.parse_args())
 
-    if command_line_args["slim"]:
-        Spacing.PARTS   = " "
-        Spacing.COLUMNS = "  "
-    else:
-        Spacing.PARTS   = "  "
-        Spacing.COLUMNS = "    "
+    # re-jig spacing if "slim" argument passed
+    _Spacing.PARTS   = _Spacing.CHARACTER * (1 + (not command_line_args["slim"]))
+    _Spacing.COLUMNS = _Spacing.PARTS * 2
 
     return GetTable(command_line_args)
 
